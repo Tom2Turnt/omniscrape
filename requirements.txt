@@ -1,0 +1,7 @@
+# Tiers 0-1 need only these two. Everything works without Scrapling except
+# the stealth tier.
+parsel==1.11.0
+lxml==6.1.2
+
+# Tier 2 (stealth / anti-bot). Pulls patchright, playwright and curl_cffi.
+scrapling[fetchers]==0.4.15

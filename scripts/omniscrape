@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Wrapper so omniscrape always runs on the Python that has its deps.
+# The bundled .venv (uv, 3.13) has parsel/lxml; Apple's system python3 does not.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$HERE/../.venv/bin/python"
+PY="$([ -x "$VENV" ] && echo "$VENV" || command -v python3)"
+exec "$PY" "$HERE/omniscrape.py" "$@"
