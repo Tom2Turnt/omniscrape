@@ -1,7 +1,7 @@
-# Tiers 0-1 need only these two. Everything works without Scrapling except
-# the stealth tier.
+# Tier 0 (plain HTTP) needs only these two.
 parsel==1.11.0
-lxml==6.1.2
+lxml>=6.1.1,<7          # scrapling requires >=6.1.1; don't hard-pin into a conflict
 
-# Tier 2 (stealth / anti-bot). Pulls patchright, playwright and curl_cffi.
+# Tiers 1-2 (headless + stealth). Pulls patchright, playwright and curl_cffi.
+# Also needs the browser binary that `scrapling install` fetches.
 scrapling[fetchers]==0.4.15

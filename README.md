@@ -11,11 +11,11 @@ Free. Runs on your machine. No API key, no account, no card.
 
 | Tier | How it fetches | Beats |
 |---|---|---|
-| 0 | plain HTTP | static HTML, JSON APIs, sitemaps |
-| 1 | headless browser | SPAs, JS-rendered content, lazy loading |
-| 2 | stealth browser | Cloudflare Turnstile, PerimeterX, fingerprinting |
+| 0 `static` | plain HTTP | static HTML, JSON APIs, sitemaps |
+| 1 `dynamic` | headless browser | SPAs, JS-rendered content, lazy loading |
+| 2 `stealth` | stealth browser | Cloudflare Turnstile, PerimeterX, fingerprinting |
 
-It starts at Tier 0 every time, because most pages are a Tier 0 page and burning a
+By default it starts at Tier 0, because most pages are a Tier 0 page and burning a
 browser on them is slow and rude. It only climbs when it has to.
 
 Verified on 2026-08-29, no proxy:
@@ -28,17 +28,19 @@ Verified on 2026-08-29, no proxy:
 ## Install
 
 ```bash
-git clone <this repo> ~/.claude/skills/omniscrape
+git clone https://github.com/Tom2Turnt/omniscrape ~/.claude/skills/omniscrape
 cd ~/.claude/skills/omniscrape
 ./install.sh
 ```
+
+**macOS and Linux. Windows via WSL** — the scripts assume `.venv/bin`.
 
 `install.sh` builds an isolated `.venv` next to the skill and downloads the stealth
 browser binaries. It does not touch your system Python. Needs Python 3.10+; uses `uv`
 if you have it, falls back to `venv` + `pip` if you don't.
 
-The browser download is a few hundred MB and only happens once. If it fails, Tiers 0–1
-still work — you just lose the stealth tier.
+The browser download is a few hundred MB and only happens once. If it fails, Tier 0 (plain HTTP)
+still works; both browser tiers need that binary.
 
 Smoke test:
 
@@ -58,8 +60,8 @@ Then just ask Claude to scrape something. The skill triggers on "scrape", "crawl
 # force a tier instead of letting it climb
 ./scripts/omniscrape https://example.com --tier stealth
 
-# save a bundle: page.html + data.csv + summary.md
-./scripts/omniscrape https://example.com --extract h2 --out ./bundle
+# save a bundle: page.html + summary.md, plus data.csv because --extract is used
+./scripts/omniscrape https://news.ycombinator.com --extract '.titleline > a' --out ./bundle
 ```
 
 Always call `scripts/omniscrape`, not `omniscrape.py` directly — the wrapper is what
@@ -78,8 +80,8 @@ points Python at the venv that has the dependencies.
 
 ## Be decent about it
 
-Default delay is 1.0s with jittered user-agent rotation, on purpose. Don't crank
-concurrency on a single host — that's how a scrape becomes an attack and how IP ranges
+Default delay is 1.0s with jittered user-agent rotation, on purpose. It makes one
+request at a time; if you loop it over many urls, don't crank the pace on a single host — that's how a scrape becomes an attack and how IP ranges
 get burned. Cache with `--out` so re-extraction doesn't re-hit the site. Respect the
 terms of the sites you point it at; that part is on you.
 

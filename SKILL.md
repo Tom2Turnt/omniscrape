@@ -2,13 +2,14 @@
 name: omniscrape
 description: >-
   The all-in-one, auto-escalating web scraper. Use whenever the user wants to scrape,
-  crawl, extract, pull, harvest, or "get the data from" any page, site, API, or topic —
+  extract, pull, harvest, or "get the data from" any page or API —
   e.g. "scrape acme.com", "get all products off this listing", "pull the prices",
-  "what's on this page", "crawl the whole site", "this site keeps blocking me".
+  "what's on this page", "this site keeps blocking me". Scrapes ONE url per call;
+  there is no crawling, link-following or pagination — hand it urls in a loop.
   Starts with the cheapest fetch and automatically climbs a ladder (static HTTP →
   JS-rendered → stealth/anti-bot → real Chrome → licensed actors) until it gets
   clean, un-blocked data. Reports which tier won and returns a clean bundle
-  (data.csv + summary.md + raw html).
+  (raw html + summary.md, plus data.csv when --extract is used).
 version: 1.0.0
 metadata:
   type: router-skill
@@ -53,12 +54,12 @@ Run the engine. It does Tiers 0→2 in one shot, escalating internally:
   --extract "<css selector>" --out /tmp/scrape --json
 ```
 
-Key flags (full list: `omniscrape.py -h`):
+Key flags (full list: `scripts/omniscrape -h`):
 - `--extract "CSS"` — pull matching text as rows (`--attr href` for an attribute).
 - `--max-tier stealth|dynamic|static` — cap how far it climbs (default: stealth).
 - `--tier stealth` — force a specific tier (skip the cheap ones for a known-hard site).
 - `--wait-selector "CSS"` — wait for content to appear (dynamic/stealth tiers).
-- `--out DIR` — write `page.html`, `data.csv`, `summary.md`.
+- `--out DIR` — write `page.html` and `summary.md`, plus `data.csv` when `--extract` is used.
 - `--headful` — watch the browser (debugging a stubborn page).
 - `--json` — machine-readable result; read `tier_used`, `ok`, `attempts`, `extracted`.
 
@@ -150,8 +151,7 @@ blocked, say which tiers you tried and what the next escalation is — never fai
 
 - Default `--delay 1.0` + jittered UA rotation is polite on purpose. Don't crank concurrency
   into DoS territory on a single host — that's how IP ranges get burned and how a scrape
-  becomes an attack. For big crawls, keep `--delay` humane, randomize order, and cap
-  concurrency so you pace yourself.
-- Cache the raw `page.html` (`--out`) so re-extraction doesn't re-hit the site.
-- The engine rotates user-agents and spoofs fingerprints at the stealth tier — that's the
+  becomes an attack. The engine is one request at a time by design; if you loop it over
+  many urls, keep `--delay` humane and randomize order.
+- The engine rotates user-agents on the static tier; the browser tiers generate their own — that's the
   "maximum bypass" posture. It does **not** defeat authentication; walled data → Tier 4.

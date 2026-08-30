@@ -1,7 +1,7 @@
 # omniscrape — escalation reference
 
 Deep detail for the tiers the main `SKILL.md` only summarizes. Read this when a job
-falls off the bottom of the bundled engine (Tiers 0–2) and needs Tier 3, 4, or 5.
+falls off the bottom of the bundled engine (Tiers 0–2) and needs Tier 3 or 4.
 
 ## Block signatures the engine watches for
 
@@ -65,10 +65,10 @@ proxies**:
 
 ```bash
 # one proxy
-omniscrape.py <url> --tier stealth --proxy "http://user:pass@gate.provider.com:7777"
+scripts/omniscrape <url> --tier stealth --proxy "http://user:pass@gate.provider.com:7777"
 # a rotating pool (one identity is chosen per run; rotation happens across runs)
 export OMNISCRAPE_PROXIES="http://u:p@a:7777, http://u:p@b:7777, socks5://u:p@c:1080"
-omniscrape.py <url> --tier stealth
+scripts/omniscrape <url> --tier stealth
 ```
 **Without a proxy the engine prints `proxy: NONE` and warns you** — that's the honest state,
 not a silent success.
@@ -82,7 +82,7 @@ A multi-agent research pass (privacy claims adversarially fact-checked) ranked t
 | **1 — top pick** | **Decodo** (formerly Smartproxy) | Best balance. Fastest residential in Proxyway's 2025 test (~99.86% success), **EU/Lithuania** (non-Five-Eyes, GDPR), **no upfront KYC**, **crypto via CoinGate**, clean IP sourcing. Plugs into omniscrape as `http://user-<USER>-country-us:<PASS>@gate.decodo.com:7000` (HTTP + SOCKS5, same host). Use the plain rotating gateway in `OMNISCRAPE_PROXIES`; add `-session-<id>` to the username only for jobs that need a sticky IP. |
 | 2 | Bright Data | Performance king for the hardest anti-bot, but privacy-hostile: heavy business KYC (rejects Gmail signups), explicit law-enforcement cooperation, a license clause reusing your scraped data, Hola/Luminati sourcing legacy. Use only if a target defeats Decodo. |
 | 3 | Oxylabs / Webshare | Elite/mid performance but mandatory KYC (Oxylabs), no crypto, long retention; US/Tesonet overhang. |
-| ⛔ AVOID | **NetNut** | **FBI/IRS-seized 2026-07-02; its residential pool was a ~2M-device malware botnet ("Popa"). Do not route through it or any white-label reseller.** |
+| ⛔ AVOID | **NetNut** | Serious unresolved questions have been raised about the sourcing of its residential pool. Not recommended; check current reporting yourself before using it or any white-label reseller. |
 
 Watch-outs on the top pick: Decodo is **not no-logs** (it logs auth IP, timestamps, bandwidth
 and the target *domain*, tied to your account, ~billing period + 90 days) — favorable
@@ -91,13 +91,14 @@ jurisdiction is not a shield, so pay with crypto and avoid its screened sensitiv
 "Site Unblocker" add-on is a separate API, **not** a plain `user:pass` proxy, so it does not
 drop into omniscrape the same way. Decodo/Oxylabs/Webshare all trace to the same Lithuanian
 (Tesonet) ownership, so spreading across them is less diversification than it looks. Don't
-confuse Decodo/Smartproxy(.com) with the `smartproxy.ORG` impostor tied to the IPIDEA botnet.
+confuse Decodo/Smartproxy(.com) with the unrelated `smartproxy.ORG`, which is a different
+operator entirely — check the domain before you buy.
 
 ### 2. Geo/locale consistency — don't contradict your own IP
 A US residential IP with a Berlin timezone and `de-DE` locale screams "bot." Match them to
 the proxy's country:
 ```bash
-omniscrape.py <url> --tier stealth --proxy <us-proxy> --locale en-US --timezone America/New_York
+scripts/omniscrape <url> --tier stealth --proxy <us-proxy> --locale en-US --timezone America/New_York
 ```
 
 ### 3. Browser fingerprint — on by default at Tier 2
@@ -112,7 +113,7 @@ search). The underlying engine is a patched Firefox (Camoufox) that already spoo
 real build. Combine with `--session-dir ./sess` to persist and *warm* a session (cookies +
 localStorage carry over, so a deep page isn't hit cold):
 ```bash
-omniscrape.py <url> --tier stealth --real-chrome --session-dir ~/.omniscrape/sess1
+scripts/omniscrape <url> --tier stealth --real-chrome --session-dir ~/.omniscrape/sess1
 ```
 
 ### 5. Behavioral pacing — don't look robotic
@@ -123,11 +124,11 @@ jobs, keep `--delay` humane and cap concurrency so you don't burn identities.
 
 ### What still gives you away (be realistic)
 - **Any login.** A warmed real-Chrome session helps, but scraping *authenticated* content is a
-  ban/legal issue, not a stealth problem → Tier 5 licensed actor.
+  ban/legal issue, not a stealth problem → Tier 4 licensed actor.
 - **CAPTCHA walls per request** (hCaptcha/reCAPTCHA v2 image grids) need a solver service; the
   stealth tier avoids *triggering* them but doesn't *solve* them.
 - **Kasada / DataDome at enterprise tier** can still win against a lone residential IP — rotate
-  a real pool and slow down, or fall back to Tier 5.
+  a real pool and slow down, or fall back to Tier 4.
 
 ## "Maximum bypass" posture — what it does and doesn't do
 
@@ -141,4 +142,4 @@ mainstream tools support:
 
 It deliberately does **not**: forge or steal authentication, stuff credentials, or hammer a
 single host at DoS concurrency. Those aren't "more scraping" — they're a different (and
-harmful) activity, and they get your IP ranges and accounts torched. Walled data → Tier 5.
+harmful) activity, and they get your IP ranges and accounts torched. Walled data → Tier 4.

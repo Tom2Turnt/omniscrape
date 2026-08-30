@@ -45,7 +45,6 @@ import os
 import random
 import re
 import socket
-import subprocess
 import sys
 import time
 import urllib.request
@@ -267,29 +266,21 @@ def fetch_static(url, timeout, ua, proxy=None, allow_private=False):
             body = ""
         return e.code, body
     except Exception as e:
-        # Fall back to curl for TLS quirks. Constrain protocols so file://ftp:// and
-        # protocol-downgrade redirects are impossible; pass proxy creds via env, not argv.
-        try:
-            # No -L / no redirect following in the fallback: --proto-redir only
-            # constrains the scheme, not the destination IP, so an origin-controlled
-            # 3xx could bounce curl to an internal/metadata address. The urllib path
-            # owns redirects (each hop re-validated); a 3xx here escalates instead.
-            # curl treats --max-time 0 as UNLIMITED, so a sub-second --timeout must not
-            # round down to 0; floor it at 1s (the outer subprocess timeout still caps it).
-            cmd = ["curl", "-sS", "--max-time", str(max(int(timeout), 1)), "-A", ua,
-                   "-e", "-", "--proto", "=http,https", "--max-redirs", "0",
-                   "-w", "\n__HTTP_STATUS__%{http_code}", "--", url]
-            env = dict(os.environ)
-            if proxy:
-                env["ALL_PROXY"] = proxy
-                env["HTTPS_PROXY"] = proxy
-                env["HTTP_PROXY"] = proxy
-            out = subprocess.run(cmd, capture_output=True, timeout=timeout + 5, env=env)
-            text = out.stdout.decode("utf-8", errors="replace")
-            body, _, code = text.rpartition("__HTTP_STATUS__")
-            return (int(code) if code.strip().isdigit() else 0), body
-        except Exception as e2:
-            return 0, f"<!-- static fetch failed: {e} / {e2} -->"
+        # There used to be a curl fallback here "for TLS quirks". It was removed
+        # because it was an SSRF hole, not a convenience.
+        #
+        # validate_url() decides using socket.getaddrinfo. The fallback handed curl
+        # the raw URL string, and curl parses numeric hosts with its OWN parser. On
+        # macOS the two disagree: getaddrinfo reads "0177.0.0.1" as 177.0.0.1 (public,
+        # allowed) while curl reads the leading zero as octal and connects to
+        # 127.0.0.1. Same trick reaches 169.254.169.254 via "0251.254.169.254".
+        # And urllib failing against the unreachable public address is exactly what
+        # TRIGGERED the fallback, so the guard was bypassable by default.
+        #
+        # Two parsers resolving attacker-controlled input independently cannot be
+        # made safe by patching either one. Do not reintroduce this without pinning
+        # the already-validated IP (curl --resolve host:port:ip).
+        return 0, f"<!-- static fetch failed: {e} -->"
 
 
 # ------------------------------------------- Tiers 1/2: Scrapling (headless / stealth)
@@ -358,7 +349,7 @@ def fetch_scrapling(url, mode, timeout, wait_selector, headful, stealth_cfg=None
     cfg = stealth_cfg or {}
     if not _scrapling_available():
         return None, None, ("scrapling-missing",
-                            'python3 -m pip install --break-system-packages "scrapling[fetchers]" && scrapling install')
+                            'run ./install.sh from the skill root')
 
     # Guard against a shared session dir corrupting a concurrent Chrome profile.
     lock_fh = None
@@ -583,19 +574,23 @@ def run(args):
         else:
             out["links"] = []
             if args.extract:
-                out["extract_error"] = "parsel not installed: python3 -m pip install --break-system-packages parsel"
+                out["extract_error"] = "parsel not installed: run ./install.sh from the skill root"
         if args.out:
             _write_bundle(args.out, args.url, html, out, result)
             out["out_dir"] = os.path.abspath(args.out)
     else:
         out["next_step"] = ("All local tiers blocked/failed. Escalate to Tier 3 (real Chrome "
-                            "via browser-harness) or Tier 4 (licensed Apify actor). "
+                            "any CDP harness, not bundled) or Tier 4 (licensed Apify actor, not bundled). "
                             "See the skill's reference.md.")
 
     if args.json:
         print(json.dumps(out, indent=2))
     else:
         if result:
+            # a swallowed extract failure used to print "OK ... links=0" and exit 0,
+            # which looks like success on a machine where install.sh never ran
+            if out.get("extract_error"):
+                print("!! " + out["extract_error"], file=sys.stderr)
             print(f"OK  tier={out['tier_used']}  status={out['status']}  "
                   f"bytes={out['bytes']}  links={len(out.get('links', []))}"
                   + (f"  rows={len(out['extracted'])}" if 'extracted' in out else ""))
@@ -606,6 +601,8 @@ def run(args):
         else:
             print("BLOCKED on every allowed tier.")
             print(out["next_step"])
+    if result and out.get('extract_error'):
+        return 4
     return 0 if result else 3
 
 

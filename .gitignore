@@ -1,4 +1,18 @@
 .venv/
+venv/
+env/
+.python-version
 __pycache__/
 *.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
 .DS_Store
+
+# --session-dir persists real cookies and localStorage; --out writes scraped pages
+sessions/
+bundle/
+out/
+.omniscrape.lock
+*.log
+.env
